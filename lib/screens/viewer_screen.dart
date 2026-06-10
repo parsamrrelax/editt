@@ -339,6 +339,13 @@ class _ViewerScreenState extends State<ViewerScreen> {
               onPanStart: (details) {
                 windowManager.startDragging();
               },
+              onDoubleTap: () async {
+                if (await windowManager.isMaximized()) {
+                  await windowManager.unmaximize();
+                } else {
+                  await windowManager.maximize();
+                }
+              },
               child: AppBar(
                 title: const Text('Editt', style: TextStyle(fontFamily: 'JetbrainsMono')),
                 actions: [
@@ -432,40 +439,62 @@ class _ViewerScreenState extends State<ViewerScreen> {
           ],
         ),
       );
-    }
-
-    if (_currentImage == null) {
-      return Container(
-        decoration: _isDragging
-            ? BoxDecoration(
-                border: Border.all(
+    }    if (_currentImage == null) {
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        decoration: BoxDecoration(
+          color: _isDragging
+              ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.1)
+              : Colors.transparent,
+          border: _isDragging
+              ? Border.all(
                   color: Theme.of(context).colorScheme.primary,
                   width: 3,
+                )
+              : Border.all(
+                  color: Colors.transparent,
+                  width: 3,
                 ),
-                color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.1),
-              )
-            : null,
+        ),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                _isDragging ? Icons.file_download : Icons.image_outlined,
-                size: 128,
-                color: _isDragging
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.grey,
+              AnimatedScale(
+                scale: _isDragging ? 1.15 : 1.0,
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutBack,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: _isDragging
+                        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.15)
+                        : Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _isDragging ? Icons.file_download : Icons.image_outlined,
+                    size: 96,
+                    color: _isDragging
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.grey.withValues(alpha: 0.6),
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
-              Text(
-                _isDragging ? 'Drop image here' : 'No image loaded',
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 250),
                 style: TextStyle(
                   fontSize: 20,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'JetbrainsMono',
                   color: _isDragging
                       ? Theme.of(context).colorScheme.primary
-                      : null,
+                      : Theme.of(context).colorScheme.onSurface,
                 ),
+                child: Text(_isDragging ? 'Drop image here' : 'No image loaded'),
               ),
               const SizedBox(height: 8),
               Text(
@@ -493,7 +522,6 @@ class _ViewerScreenState extends State<ViewerScreen> {
         ),
       );
     }
-
     return ImageViewer(
       imageFile: _currentImage!,
       onEditPressed: _openEditor,
