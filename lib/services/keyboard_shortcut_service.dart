@@ -270,6 +270,9 @@ class _KeyboardShortcutHandlerState extends State<KeyboardShortcutHandler> {
         case 'd':
           mainKey = LogicalKeyboardKey.keyD;
           break;
+        case 'x':
+          mainKey = LogicalKeyboardKey.keyX;
+          break;
         default:
           return null;
       }

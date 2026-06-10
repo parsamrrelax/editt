@@ -619,17 +619,45 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
   
+  Future<void> _handleClose() async {
+    if (_isSaving) return;
+    
+    if (_hasUnappliedChanges) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Discard changes?'),
+          content: const Text(
+            'You have unsaved changes. If you exit, these changes will be lost.'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Discard'),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+    }
+    
+    if (mounted && context.mounted) {
+      Navigator.of(context).pop();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return KeyboardShortcutHandler(
       child: PopScope(
-        canPop: !_isSaving,
+        canPop: !_isSaving && !_hasUnappliedChanges,
         onPopInvokedWithResult: (didPop, result) async {
-          // Prevent back navigation during save
-          if (_isSaving) {
-            return;
-          }
+          if (didPop) return;
+          _handleClose();
         },
         child: Stack(
         children: [
@@ -640,10 +668,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   callbacks: ProImageEditorCallbacks(
                     onImageEditingComplete: _onEditingComplete,
                     onCloseEditor: (editorMode) {
-                      // Don't close if we're in the middle of saving
-                      if (!_isSaving && mounted && context.mounted) {
-                        Navigator.of(context).pop();
-                      }
+                      _handleClose();
                     },
                     mainEditorCallbacks: MainEditorCallbacks(
                       onImageDecoded: () {
@@ -673,6 +698,10 @@ class _EditorScreenState extends State<EditorScreen> {
                         ),
                       ),
                     ),
+                    imageGeneration: const ImageGenerationConfigs(
+                      enableIsolateGeneration: true,
+                      enableBackgroundGeneration: true,
+                    ),
                   ),
                 )
               : ProImageEditor.file(
@@ -681,10 +710,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   callbacks: ProImageEditorCallbacks(
                     onImageEditingComplete: _onEditingComplete,
                     onCloseEditor: (editorMode) {
-                      // Don't close if we're in the middle of saving
-                      if (!_isSaving && mounted && context.mounted) {
-                        Navigator.of(context).pop();
-                      }
+                      _handleClose();
                     },
                     mainEditorCallbacks: MainEditorCallbacks(
                       onImageDecoded: () {
@@ -711,6 +737,10 @@ class _EditorScreenState extends State<EditorScreen> {
                           builder: (_) => _buildCustomBottomBar(editor, key),
                         ),
                       ),
+                    ),
+                    imageGeneration: const ImageGenerationConfigs(
+                      enableIsolateGeneration: true,
+                      enableBackgroundGeneration: true,
                     ),
                   ),
                 ),

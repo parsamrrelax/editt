@@ -28,34 +28,48 @@ class ThemeService {
   /// Returns Colors.blue as fallback for any errors
   static Future<Color> getOmarchyThemeColor() async {
     try {
-      // Execute omarchy-theme-current command
-      final result = await Process.run('omarchy-theme-current', []);
-      
-      // Check if command was successful
-      if (result.exitCode != 0) {
-        return Colors.blue;
-      }
-      // Get theme name, lowercase it, and replace spaces with hyphens
-      final themeName = result.stdout.toString().trim().toLowerCase().replaceAll(' ', '-');
-      if (themeName.isEmpty) {
-        return Colors.blue;
-      }
-
-      // Read the icons.theme file
       final homeDir = Platform.environment['HOME'];
       if (homeDir == null) {
         return Colors.blue;
       }
 
-      final themeFilePath = '$homeDir/.config/omarchy/themes/$themeName/icons.theme';
-      final themeFile = File(themeFilePath);
+      String? content;
 
-      if (!await themeFile.exists()) {
+      // 1. Try reading the active theme's icons.theme directly
+      final directThemePath = '$homeDir/.config/omarchy/current/theme/icons.theme';
+      final directThemeFile = File(directThemePath);
+      
+      if (await directThemeFile.exists()) {
+        content = await directThemeFile.readAsString();
+      }
+
+      // 2. If that fails, read theme.name config to locate the theme folder
+      if (content == null) {
+        final themeNameFile = File('$homeDir/.config/omarchy/current/theme.name');
+        String themeName = '';
+        if (await themeNameFile.exists()) {
+          themeName = (await themeNameFile.readAsString()).trim().toLowerCase().replaceAll(' ', '-');
+        } else {
+          // Fallback: Execute omarchy-theme-current command as last resort
+          final result = await Process.run('omarchy-theme-current', []);
+          if (result.exitCode == 0) {
+            themeName = result.stdout.toString().trim().toLowerCase().replaceAll(' ', '-');
+          }
+        }
+
+        if (themeName.isNotEmpty) {
+          final themeFilePath = '$homeDir/.config/omarchy/themes/$themeName/icons.theme';
+          final themeFile = File(themeFilePath);
+          if (await themeFile.exists()) {
+            content = await themeFile.readAsString();
+          }
+        }
+      }
+
+      if (content == null) {
         return Colors.blue;
       }
 
-      final content = await themeFile.readAsString();
-      
       // Parse the content to find Yaru color variant
       // Looking for patterns like "Yaru-blue", "Yaru-red", etc.
       final yaruRegex = RegExp(r'Yaru-(\w+)', caseSensitive: false);
