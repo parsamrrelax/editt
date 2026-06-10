@@ -22,30 +22,41 @@ class ImageService {
   }
 
   /// Convert image format
+  /// Convert image format
   static Future<Uint8List?> convertFormat({
     required Uint8List imageBytes,
     required ImageFormat targetFormat,
     int quality = 95,
   }) async {
     try {
-      // Decode the image
-      final image = img.decodeImage(imageBytes);
-      if (image == null) return null;
-
-      // Encode to target format
-      switch (targetFormat) {
-        case ImageFormat.jpg:
-          return Uint8List.fromList(img.encodeJpg(image, quality: quality));
-        case ImageFormat.png:
-          return Uint8List.fromList(img.encodePng(image));
-        case ImageFormat.webp:
-          return Uint8List.fromList(img.encodeJpg(image, quality: quality));
-      }
+      return await compute(_convertFormatIsolate, {
+        'imageBytes': imageBytes,
+        'targetFormat': targetFormat,
+        'quality': quality,
+      });
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error converting format: $e');
       }
       return null;
+    }
+  }
+
+  static Uint8List? _convertFormatIsolate(Map<String, dynamic> args) {
+    final Uint8List imageBytes = args['imageBytes'] as Uint8List;
+    final ImageFormat targetFormat = args['targetFormat'] as ImageFormat;
+    final int quality = args['quality'] as int;
+
+    final image = img.decodeImage(imageBytes);
+    if (image == null) return null;
+
+    switch (targetFormat) {
+      case ImageFormat.jpg:
+        return Uint8List.fromList(img.encodeJpg(image, quality: quality));
+      case ImageFormat.png:
+        return Uint8List.fromList(img.encodePng(image));
+      case ImageFormat.webp:
+        return Uint8List.fromList(img.encodeJpg(image, quality: quality));
     }
   }
 
@@ -56,32 +67,11 @@ class ImageService {
     required int maxHeight,
   }) async {
     try {
-      final image = img.decodeImage(imageBytes);
-      if (image == null) return null;
-
-      // Calculate new dimensions maintaining aspect ratio
-      int newWidth = image.width;
-      int newHeight = image.height;
-
-      if (newWidth > maxWidth || newHeight > maxHeight) {
-        final widthRatio = maxWidth / newWidth;
-        final heightRatio = maxHeight / newHeight;
-        final ratio = widthRatio < heightRatio ? widthRatio : heightRatio;
-
-        newWidth = (newWidth * ratio).round();
-        newHeight = (newHeight * ratio).round();
-      }
-
-      // Resize the image
-      final resized = img.copyResize(
-        image,
-        width: newWidth,
-        height: newHeight,
-        interpolation: img.Interpolation.linear,
-      );
-
-      // Encode back to original format (or JPEG for smaller size)
-      return Uint8List.fromList(img.encodeJpg(resized, quality: 90));
+      return await compute(_reduceResolutionIsolate, {
+        'imageBytes': imageBytes,
+        'maxWidth': maxWidth,
+        'maxHeight': maxHeight,
+      });
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error reducing resolution: $e');
@@ -90,23 +80,62 @@ class ImageService {
     }
   }
 
+  static Uint8List? _reduceResolutionIsolate(Map<String, dynamic> args) {
+    final Uint8List imageBytes = args['imageBytes'] as Uint8List;
+    final int maxWidth = args['maxWidth'] as int;
+    final int maxHeight = args['maxHeight'] as int;
+
+    final image = img.decodeImage(imageBytes);
+    if (image == null) return null;
+
+    int newWidth = image.width;
+    int newHeight = image.height;
+
+    if (newWidth > maxWidth || newHeight > maxHeight) {
+      final widthRatio = maxWidth / newWidth;
+      final heightRatio = maxHeight / newHeight;
+      final ratio = widthRatio < heightRatio ? widthRatio : heightRatio;
+
+      newWidth = (newWidth * ratio).round();
+      newHeight = (newHeight * ratio).round();
+    }
+
+    final resized = img.copyResize(
+      image,
+      width: newWidth,
+      height: newHeight,
+      interpolation: img.Interpolation.linear,
+    );
+
+    return Uint8List.fromList(img.encodeJpg(resized, quality: 90));
+  }
+
   /// Reduce image file size by lowering quality
   static Future<Uint8List?> reduceFileSize({
     required Uint8List imageBytes,
     required int quality,
   }) async {
     try {
-      final image = img.decodeImage(imageBytes);
-      if (image == null) return null;
-
-      // Re-encode with lower quality
-      return Uint8List.fromList(img.encodeJpg(image, quality: quality));
+      return await compute(_reduceFileSizeIsolate, {
+        'imageBytes': imageBytes,
+        'quality': quality,
+      });
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error reducing file size: $e');
       }
       return null;
     }
+  }
+
+  static Uint8List? _reduceFileSizeIsolate(Map<String, dynamic> args) {
+    final Uint8List imageBytes = args['imageBytes'] as Uint8List;
+    final int quality = args['quality'] as int;
+
+    final image = img.decodeImage(imageBytes);
+    if (image == null) return null;
+
+    return Uint8List.fromList(img.encodeJpg(image, quality: quality));
   }
 
   /// Save image bytes to a file
@@ -129,19 +158,23 @@ class ImageService {
   /// Get image dimensions
   static Future<Map<String, int>?> getImageDimensions(Uint8List imageBytes) async {
     try {
-      final image = img.decodeImage(imageBytes);
-      if (image == null) return null;
-
-      return {
-        'width': image.width,
-        'height': image.height,
-      };
+      return await compute(_getImageDimensionsIsolate, imageBytes);
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error getting image dimensions: $e');
       }
       return null;
     }
+  }
+
+  static Map<String, int>? _getImageDimensionsIsolate(Uint8List imageBytes) {
+    final image = img.decodeImage(imageBytes);
+    if (image == null) return null;
+
+    return {
+      'width': image.width,
+      'height': image.height,
+    };
   }
 
   /// Get file size in bytes
@@ -175,60 +208,67 @@ class ImageService {
     required bool isVertical,
   }) async {
     try {
-      final image = img.decodeImage(imageBytes);
-      if (image == null) return null;
-
-      // Convert relative positions to absolute pixel positions
-      int startPixel, endPixel;
-      
-      if (isVertical) {
-        startPixel = (startPosition * image.width).round();
-        endPixel = (endPosition * image.width).round();
-        
-        // Ensure positions are within bounds
-        startPixel = startPixel.clamp(0, image.width);
-        endPixel = endPixel.clamp(0, image.width);
-        
-        // Ensure start is before end
-        if (startPixel > endPixel) {
-          final temp = startPixel;
-          startPixel = endPixel;
-          endPixel = temp;
-        }
-        
-        // Don't allow cutting the entire image
-        if (startPixel == 0 && endPixel == image.width) {
-          return null;
-        }
-        
-        return _cutoutVertical(image, startPixel, endPixel);
-      } else {
-        startPixel = (startPosition * image.height).round();
-        endPixel = (endPosition * image.height).round();
-        
-        // Ensure positions are within bounds
-        startPixel = startPixel.clamp(0, image.height);
-        endPixel = endPixel.clamp(0, image.height);
-        
-        // Ensure start is before end
-        if (startPixel > endPixel) {
-          final temp = startPixel;
-          startPixel = endPixel;
-          endPixel = temp;
-        }
-        
-        // Don't allow cutting the entire image
-        if (startPixel == 0 && endPixel == image.height) {
-          return null;
-        }
-        
-        return _cutoutHorizontal(image, startPixel, endPixel);
-      }
+      return await compute(_cutoutImageIsolate, {
+        'imageBytes': imageBytes,
+        'startPosition': startPosition,
+        'endPosition': endPosition,
+        'isVertical': isVertical,
+      });
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error performing cutout: $e');
       }
       return null;
+    }
+  }
+
+  static Uint8List? _cutoutImageIsolate(Map<String, dynamic> args) {
+    final Uint8List imageBytes = args['imageBytes'] as Uint8List;
+    final double startPosition = args['startPosition'] as double;
+    final double endPosition = args['endPosition'] as double;
+    final bool isVertical = args['isVertical'] as bool;
+
+    final image = img.decodeImage(imageBytes);
+    if (image == null) return null;
+
+    int startPixel, endPixel;
+    
+    if (isVertical) {
+      startPixel = (startPosition * image.width).round();
+      endPixel = (endPosition * image.width).round();
+      
+      startPixel = startPixel.clamp(0, image.width);
+      endPixel = endPixel.clamp(0, image.width);
+      
+      if (startPixel > endPixel) {
+        final temp = startPixel;
+        startPixel = endPixel;
+        endPixel = temp;
+      }
+      
+      if (startPixel == 0 && endPixel == image.width) {
+        return null;
+      }
+      
+      return _cutoutVertical(image, startPixel, endPixel);
+    } else {
+      startPixel = (startPosition * image.height).round();
+      endPixel = (endPosition * image.height).round();
+      
+      startPixel = startPixel.clamp(0, image.height);
+      endPixel = endPixel.clamp(0, image.height);
+      
+      if (startPixel > endPixel) {
+        final temp = startPixel;
+        startPixel = endPixel;
+        endPixel = temp;
+      }
+      
+      if (startPixel == 0 && endPixel == image.height) {
+        return null;
+      }
+      
+      return _cutoutHorizontal(image, startPixel, endPixel);
     }
   }
 

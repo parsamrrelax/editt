@@ -246,14 +246,35 @@ class _ViewerScreenState extends State<ViewerScreen> {
       });
     }
   }
-
   Future<void> _openEditor() async {
     if (_currentImage == null) return;
 
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => EditorScreen(imageFile: _currentImage!),
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 350),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (context, animation, secondaryAnimation) => 
+            EditorScreen(imageFile: _currentImage!),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final slideAnimation = Tween<Offset>(
+            begin: const Offset(0.0, 0.08),
+            end: Offset.zero,
+          ).animate(
+            CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            ),
+          );
+          
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: slideAnimation,
+              child: child,
+            ),
+          );
+        },
       ),
     );
 

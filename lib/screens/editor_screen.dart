@@ -673,6 +673,10 @@ class _EditorScreenState extends State<EditorScreen> {
                         ),
                       ),
                     ),
+                    imageGeneration: const ImageGenerationConfigs(
+                      enableIsolateGeneration: true,
+                      enableBackgroundGeneration: true,
+                    ),
                   ),
                 )
               : ProImageEditor.file(
@@ -711,6 +715,10 @@ class _EditorScreenState extends State<EditorScreen> {
                           builder: (_) => _buildCustomBottomBar(editor, key),
                         ),
                       ),
+                    ),
+                    imageGeneration: const ImageGenerationConfigs(
+                      enableIsolateGeneration: true,
+                      enableBackgroundGeneration: true,
                     ),
                   ),
                 ),

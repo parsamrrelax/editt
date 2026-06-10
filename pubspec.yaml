@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  pro_image_editor: ^11.10.1
+  pro_image_editor: ^12.4.8
   file_selector: ^1.0.0
   image: ^4.0.0
   path_provider: ^2.0.0
