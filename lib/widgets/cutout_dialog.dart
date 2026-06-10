@@ -27,6 +27,7 @@ class _CutoutDialogState extends State<CutoutDialog> {
   bool _isProcessing = false;
   Uint8List? _previewImageBytes;
   bool _isGeneratingPreview = false;
+  bool _previewNeedsUpdate = false;
   bool _isSelecting = false;
   double? _selectionStart;
   double? _selectionEnd;
@@ -49,10 +50,14 @@ class _CutoutDialogState extends State<CutoutDialog> {
   }
 
   Future<void> _generatePreview() async {
-    if (_isGeneratingPreview) return;
+    if (_isGeneratingPreview) {
+      _previewNeedsUpdate = true;
+      return;
+    }
     
     setState(() {
       _isGeneratingPreview = true;
+      _previewNeedsUpdate = false;
     });
 
     try {
@@ -69,6 +74,10 @@ class _CutoutDialogState extends State<CutoutDialog> {
           _isGeneratingPreview = false;
         });
       }
+      
+      if (_previewNeedsUpdate && mounted) {
+        _generatePreview();
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -79,8 +88,6 @@ class _CutoutDialogState extends State<CutoutDialog> {
   }
 
   void _onImageTapDown(TapDownDetails details, BoxConstraints constraints) {
-    if (_isGeneratingPreview) return;
-    
     final rect = _calculateImageRect(constraints);
     
     // Map local position to image relative position (0.0 to 1.0)

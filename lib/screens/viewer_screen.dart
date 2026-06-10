@@ -208,20 +208,23 @@ class _ViewerScreenState extends State<ViewerScreen> {
             _currentImage = _directoryImages[nextIndex];
           });
         }
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Image deleted'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        if (mounted && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Image deleted'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete image: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete image: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
